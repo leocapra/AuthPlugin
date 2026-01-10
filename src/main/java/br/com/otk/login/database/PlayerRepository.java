@@ -1,7 +1,6 @@
 package br.com.otk.login.database;
 
 import br.com.otk.login.model.PlayerStatus;
-import org.bukkit.entity.Player;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -9,19 +8,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class PlayerRepository {
-
-    private final Connection connection;
-
-    public PlayerRepository(Connection connection) {
-        this.connection = connection;
-    }
+public record PlayerRepository(Connection connection) {
 
     public boolean exists(UUID uuid) throws SQLException {
 
         String query = "SELECT 1 FROM players WHERE uuid = ?";
 
-        try (PreparedStatement ps = connection.prepareStatement(query)){
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setString(1, uuid.toString());
             return ps.executeQuery().next();
         }
@@ -39,7 +32,7 @@ public class PlayerRepository {
 
     public String findPassword(UUID uuid) throws SQLException {
         String query = "SELECT password FROM players WHERE uuid = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)){
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setString(1, uuid.toString());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -51,7 +44,7 @@ public class PlayerRepository {
 
     public PlayerStatus getStatus(UUID uuid) throws SQLException {
         String query = "SELECT status FROM players WHERE uuid = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)){
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setString(1, uuid.toString());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -63,13 +56,12 @@ public class PlayerRepository {
 
     public void updateStatus(UUID uuid, PlayerStatus status) throws SQLException {
         String query = "UPDATE players SET status = ? WHERE uuid = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)){
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setString(1, status.name());
             ps.setString(2, uuid.toString());
             ps.executeUpdate();
         }
     }
-
 
 
 }

@@ -13,18 +13,10 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class LoginCommand implements CommandExecutor {
-
-    private final PlayerRepository repository;
-
-    public LoginCommand(LoginPlugin plugin) {
-        this.repository = new PlayerRepository(
-                plugin.getDatabaseManager().getConnection()
-        );
-    }
+public record LoginCommand(PlayerRepository repository) implements CommandExecutor {
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
 
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Apenas jogadores podem usar este comando.");
@@ -40,12 +32,10 @@ public class LoginCommand implements CommandExecutor {
         String password = args[0];
 
 
-            if (SessionManager.isLogged(uuid)) {
-                player.sendMessage("Jogador já está logado!");
-                return true;
-            }
-
-
+        if (SessionManager.isLogged(uuid)) {
+            player.sendMessage("Jogador já está logado!");
+            return true;
+        }
         try {
             if (!repository.exists(uuid)) {
                 player.sendMessage("§cVocê não está registrado. Use /register.");
@@ -64,8 +54,7 @@ public class LoginCommand implements CommandExecutor {
             player.sendMessage("§aLogin realizado com sucesso!");
 
         } catch (SQLException e) {
-            player.sendMessage("§cErro ao fazer login.");
-            e.printStackTrace();
+            player.sendMessage("§cErro grave ao fazer login! Contate um administrador.");
         }
 
         return true;

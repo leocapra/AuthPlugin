@@ -1,27 +1,21 @@
 package br.com.otk.login.command;
 
-import br.com.otk.login.LoginPlugin;
 import br.com.otk.login.database.PlayerRepository;
+import br.com.otk.login.model.PlayerStatus;
+import br.com.otk.login.session.SessionManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class RegisterCommand implements CommandExecutor {
-
-    private final PlayerRepository repository;
-
-    public RegisterCommand(LoginPlugin plugin) {
-        this.repository = new PlayerRepository(
-                plugin.getDatabaseManager().getConnection()
-        );
-    }
+public record RegisterCommand(PlayerRepository repository) implements CommandExecutor {
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
 
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Apenas jogadores podem usar este comando.");
@@ -38,7 +32,7 @@ public class RegisterCommand implements CommandExecutor {
         String confirmPassword = args[1];
 
         if (!password.equals(confirmPassword)) {
-            sender.sendMessage("Senhas diferentes");
+            sender.sendMessage("§cSenhas diferentes");
         }
 
         try {
@@ -46,13 +40,12 @@ public class RegisterCommand implements CommandExecutor {
                 player.sendMessage("§cVocê já está registrado.");
                 return true;
             }
-
             repository.save(uuid, player.getName(), password);
+            repository.updateStatus(uuid, PlayerStatus.LOGADO);
+            SessionManager.login(uuid);
             player.sendMessage("§aRegistrado com sucesso! Use /login.");
-
         } catch (SQLException e) {
             player.sendMessage("§cErro ao registrar. Contate um admin.");
-            e.printStackTrace();
         }
 
         return true;
