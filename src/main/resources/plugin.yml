@@ -1,0 +1,13 @@
+name: OTKLogin
+version: 1.0.0
+main: br.com.otk.login.LoginPlugin
+api-version: 1.20
+
+commands:
+  register:
+    description: Registrar um novo jogador
+    usage: /register <senha> <senha>
+
+  login:
+    description: Faz login no servidor
+    usage: /login <senha>
