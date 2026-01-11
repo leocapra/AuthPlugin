@@ -1,56 +1,79 @@
 package br.com.otk.login;
 
-import br.com.otk.login.command.LoginCommand;
-import br.com.otk.login.command.RegisterCommand;
-import br.com.otk.login.database.DatabaseManager;
-import br.com.otk.login.database.PlayerRepository;
-import br.com.otk.login.listener.PlayerRestrictionListener;
-import br.com.otk.login.session.SessionManager;
+import br.com.otk.login.application.session.SessionService;
+import br.com.otk.login.application.usecases.LoginUseCase;
+import br.com.otk.login.application.usecases.RegisterUseCase;
+import br.com.otk.login.domain.repository.PlayerRepository;
+import br.com.otk.login.infrastructure.bukkit.command.LoginCommand;
+import br.com.otk.login.infrastructure.bukkit.command.RegisterCommand;
+import br.com.otk.login.infrastructure.persistence.DatabaseManager;
+import br.com.otk.login.infrastructure.bukkit.listener.PlayerRestrictionListener;
+import br.com.otk.login.infrastructure.persistence.SQLitePlayerRepository;
 import org.bukkit.plugin.java.JavaPlugin;
+import br.com.otk.login.infrastructure.bukkit.command.CommandLogFilter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
+
 
 import java.io.File;
 import java.util.Objects;
 
 public class LoginPlugin extends JavaPlugin {
-    private DatabaseManager databaseManager;
+
+    private SessionService sessionService;
+
+    private void registerLogFilter() {
+        Logger rootLogger = (Logger) LogManager.getRootLogger();
+        rootLogger.addFilter(new CommandLogFilter());
+    }
 
     @Override
-        public void onEnable() {
+    public void onEnable() {
 
-            File dataFolder = new File("plugins/AuthPlugin");
-            if (!dataFolder.exists()) {
-                boolean created = dataFolder.mkdirs();
-                if (created) {
-                    getLogger().info("Pasta login-plugin-configuration criada com sucesso.");
-                }
+        registerLogFilter();
+        getLogger().info("OTKLogin habilitado com filtro de logs de comandos sensíveis");
+
+        File dataFolder = new File("plugins/OTKLogin");
+        if (!dataFolder.exists()) {
+            boolean created = dataFolder.mkdirs();
+            if (created) {
+                getLogger().info("Pasta login-plugin-configuration criada com sucesso.");
             }
-
-            databaseManager = new DatabaseManager(this, dataFolder);
-            databaseManager.init();
-
-        PlayerRepository playerRepository = new PlayerRepository(databaseManager.getConnection());
-            Objects.requireNonNull(getCommand("login"),
-                            "O comando '/login' não foi encontrado no plugin.yml!")
-                    .setExecutor(new LoginCommand(playerRepository));
-            Objects.requireNonNull(getCommand("register"),
-                            "O comando '/register' não foi encontrado no plugin.yml!")
-                    .setExecutor(new RegisterCommand(playerRepository));
-
-            getServer().getPluginManager().registerEvents(
-                    new PlayerRestrictionListener(playerRepository, JavaPlugin.getPlugin(LoginPlugin.class)),
-                    this
-            );
-            getLogger().info("OTK Login Plugin iniciado!");
         }
 
-        @Override
-        public void onDisable() {
-            SessionManager.clearAll();
+        DatabaseManager databaseManager = new DatabaseManager(this, dataFolder);
+        databaseManager.init();
 
-            if (databaseManager != null) {
-                databaseManager.close();
-            }
+        PlayerRepository playerRepository = new SQLitePlayerRepository(databaseManager.getConnection());
 
-            getServer().getScheduler().cancelTasks(this);
+        sessionService = new SessionService();
+
+        LoginUseCase loginUseCase =
+                new LoginUseCase(playerRepository, sessionService);
+
+        RegisterUseCase registerUseCase =
+                new RegisterUseCase(playerRepository, sessionService);
+
+        Objects.requireNonNull(getCommand("login"))
+                .setExecutor(new LoginCommand(loginUseCase));
+
+        Objects.requireNonNull(getCommand("register"))
+                .setExecutor(new RegisterCommand(registerUseCase));
+
+        getServer().getPluginManager().registerEvents(
+                new PlayerRestrictionListener(playerRepository, sessionService, this),
+                this
+        );
+
+        getLogger().info("OTK Login Plugin iniciado!");
+    }
+
+    @Override
+    public void onDisable() {
+        if (sessionService != null) {
+            sessionService.clear();
         }
     }
+
+
+}

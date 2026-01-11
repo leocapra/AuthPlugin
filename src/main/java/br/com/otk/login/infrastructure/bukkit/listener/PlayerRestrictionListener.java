@@ -1,8 +1,10 @@
-package br.com.otk.login.listener;
+package br.com.otk.login.infrastructure.bukkit.listener;
 
-import br.com.otk.login.database.PlayerRepository;
-import br.com.otk.login.model.PlayerStatus;
-import br.com.otk.login.session.SessionManager;
+import br.com.otk.login.LoginPlugin;
+import br.com.otk.login.application.session.SessionService;
+import br.com.otk.login.domain.model.PlayerAccount;
+import br.com.otk.login.domain.repository.PlayerRepository;
+import br.com.otk.login.domain.valueobject.PlayerStatus;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -20,6 +22,7 @@ import java.util.UUID;
 
 public record PlayerRestrictionListener(
         PlayerRepository repository,
+        SessionService sessionService,
         JavaPlugin plugin
 ) implements Listener {
 
@@ -28,21 +31,22 @@ public record PlayerRestrictionListener(
         Player player = e.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        if (SessionManager.isLogged(uuid)) return;
-        boolean hasPassword = repository.findPassword(uuid) != null;
-        SessionManager.setHasPassword(uuid, hasPassword);
+        if (sessionService.isLogged(uuid)) return;
+
+        boolean playerExists = repository.exists(uuid);
+
 
         int taskId = Bukkit.getScheduler().runTaskTimer(
                 plugin,
                 () -> {
 
-                    if (!player.isOnline() || SessionManager.isLogged(uuid)) {
-                        SessionManager.cancelTitleTask(uuid);
+                    if (!player.isOnline() || sessionService.isLogged(uuid)) {
+                        sessionService.cancelTitleTask(uuid);
                         player.clearTitle();
                         return;
                     }
 
-                    if (!SessionManager.hasPassword(uuid)) {
+                    if (!playerExists) {
                         player.showTitle(
                                 Title.title(
                                         Component.text("§7Registro necessário"),
@@ -63,36 +67,27 @@ public record PlayerRestrictionListener(
                 20L * 5
         ).getTaskId();
 
-        SessionManager.registerTitleTask(uuid, taskId);
+        sessionService.registerTitleTask(uuid, taskId);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-
-        SessionManager.clear(uuid);
-        SessionManager.cancelTitleTask(uuid);
-        SessionManager.clearHasPassword(uuid);
-
-        try {
-            repository.updateStatus(uuid, PlayerStatus.DESLOGADO);
-        } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Não foi possível atualizar status do jogador " + uuid, e
-            );
-        }
+        sessionService.logout(uuid);
+        sessionService.cancelTitleTask(uuid);
+        repository.updateStatus(uuid, PlayerStatus.DESLOGADO);
     }
 
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if (!SessionManager.isLogged(event.getPlayer().getUniqueId())) {
+        if (!sessionService.isLogged(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onChat(AsyncChatEvent event) {
-        if (!SessionManager.isLogged(event.getPlayer().getUniqueId())) {
+        if (!sessionService.isLogged(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
@@ -101,7 +96,7 @@ public record PlayerRestrictionListener(
     public void onCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
 
-        if (SessionManager.isLogged(player.getUniqueId())) return;
+        if (sessionService.isLogged(player.getUniqueId())) return;
 
         String message = event.getMessage().toLowerCase();
         if (message.startsWith("/login") || message.startsWith("/register")) return;
@@ -111,14 +106,14 @@ public record PlayerRestrictionListener(
 
     @EventHandler
     public void onBreak(BlockBreakEvent event) {
-        if (!SessionManager.isLogged(event.getPlayer().getUniqueId())) {
+        if (!sessionService.isLogged(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onPlace(BlockPlaceEvent event) {
-        if (!SessionManager.isLogged(event.getPlayer().getUniqueId())) {
+        if (!sessionService.isLogged(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
         }
     }

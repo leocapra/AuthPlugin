@@ -1,4 +1,4 @@
-package br.com.otk.login.model;
+package br.com.otk.login.domain.valueobject;
 
 public enum PlayerStatus {
     LOGADO,

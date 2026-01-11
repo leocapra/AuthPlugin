@@ -1,4 +1,4 @@
-package br.com.otk.login.database;
+package br.com.otk.login.infrastructure.persistence;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,7 +29,6 @@ public class DatabaseManager {
             createTable();
         } catch (SQLException e) {
             plugin.getLogger().severe("[OtkLogin]: Falha ao conectar no SQLite!");
-            e.printStackTrace();
         }
     }
 
@@ -49,6 +48,9 @@ public class DatabaseManager {
     }
 
     public Connection getConnection() {
+        if (connection == null) {
+            init();
+        }
         return connection;
     }
 
@@ -58,7 +60,7 @@ public class DatabaseManager {
                 connection.close();
             }
         }catch (SQLException e){
-            e.printStackTrace();
+            throw new RuntimeException("erro ao fechar banco de dados");
         }
     }
 
