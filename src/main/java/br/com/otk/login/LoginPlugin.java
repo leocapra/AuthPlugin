@@ -6,6 +6,7 @@ import br.com.otk.login.application.usecases.RegisterUseCase;
 import br.com.otk.login.domain.repository.PlayerRepository;
 import br.com.otk.login.infrastructure.bukkit.command.LoginCommand;
 import br.com.otk.login.infrastructure.bukkit.command.RegisterCommand;
+import br.com.otk.login.infrastructure.bukkit.session.LoginTimeoutManager;
 import br.com.otk.login.infrastructure.persistence.DatabaseManager;
 import br.com.otk.login.infrastructure.bukkit.listener.PlayerRestrictionListener;
 import br.com.otk.login.infrastructure.persistence.SQLitePlayerRepository;
@@ -47,6 +48,7 @@ public class LoginPlugin extends JavaPlugin {
         PlayerRepository playerRepository = new SQLitePlayerRepository(databaseManager.getConnection());
 
         sessionService = new SessionService();
+        LoginTimeoutManager loginTimeoutManager = new LoginTimeoutManager(this, sessionService);
 
         LoginUseCase loginUseCase =
                 new LoginUseCase(playerRepository, sessionService);
@@ -61,7 +63,7 @@ public class LoginPlugin extends JavaPlugin {
                 .setExecutor(new RegisterCommand(registerUseCase));
 
         getServer().getPluginManager().registerEvents(
-                new PlayerRestrictionListener(playerRepository, sessionService, this),
+                new PlayerRestrictionListener(playerRepository, sessionService, loginTimeoutManager, this),
                 this
         );
 

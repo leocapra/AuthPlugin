@@ -5,6 +5,7 @@ import br.com.otk.login.application.session.SessionService;
 import br.com.otk.login.domain.model.PlayerAccount;
 import br.com.otk.login.domain.repository.PlayerRepository;
 import br.com.otk.login.domain.valueobject.PlayerStatus;
+import br.com.otk.login.infrastructure.bukkit.session.LoginTimeoutManager;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -23,13 +24,17 @@ import java.util.UUID;
 public record PlayerRestrictionListener(
         PlayerRepository repository,
         SessionService sessionService,
+        LoginTimeoutManager loginTimeoutManager,
         JavaPlugin plugin
-) implements Listener {
+        ) implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) throws SQLException {
         Player player = e.getPlayer();
         UUID uuid = player.getUniqueId();
+
+        loginTimeoutManager.start(plugin, player);
+
 
         if (sessionService.isLogged(uuid)) return;
 
@@ -75,6 +80,7 @@ public record PlayerRestrictionListener(
         UUID uuid = event.getPlayer().getUniqueId();
         sessionService.logout(uuid);
         sessionService.cancelTitleTask(uuid);
+        LoginTimeoutManager.cancel(uuid);
         repository.updateStatus(uuid, PlayerStatus.DESLOGADO);
     }
 

@@ -2,6 +2,7 @@ package br.com.otk.login.infrastructure.bukkit.command;
 
 import br.com.otk.login.application.usecases.LoginUseCase;
 import br.com.otk.login.domain.valueobject.LoginResult;
+import br.com.otk.login.infrastructure.bukkit.session.LoginTimeoutManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -18,8 +19,11 @@ public record LoginCommand(LoginUseCase loginUseCase) implements CommandExecutor
 
         LoginResult result = loginUseCase.execute(player.getUniqueId(), args[0]);
         switch (result) {
-            case SUCCESS ->
-                    player.sendMessage("§aLogado com sucesso!");
+            case SUCCESS -> {
+                player.sendMessage("§aLogado com sucesso!");
+                LoginTimeoutManager.cancel(player.getUniqueId());
+            }
+
             case PASSWORD_MISMATCH ->
                     player.sendMessage("§cSenha incorreta!");
             case EMPTY_PASSWORD ->

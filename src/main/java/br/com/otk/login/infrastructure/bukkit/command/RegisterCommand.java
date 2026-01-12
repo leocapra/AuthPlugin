@@ -2,6 +2,7 @@ package br.com.otk.login.infrastructure.bukkit.command;
 
 import br.com.otk.login.application.usecases.RegisterUseCase;
 import br.com.otk.login.domain.valueobject.RegisterResult;
+import br.com.otk.login.infrastructure.bukkit.session.LoginTimeoutManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -32,8 +33,10 @@ public record RegisterCommand(RegisterUseCase registerUseCase) implements Comman
 
         RegisterResult result = registerUseCase.execute(player.getUniqueId(), player.getName(), args[0], args[1]);
         switch (result) {
-            case SUCCESS ->
+            case SUCCESS ->{
                     player.sendMessage("§aRegistrado com sucesso!");
+                    LoginTimeoutManager.cancel(player.getUniqueId());
+            }
             case PASSWORD_MISMATCH ->
                     player.sendMessage("§cAs senhas não coincidem.");
             case EMPTY_PASSWORD ->
